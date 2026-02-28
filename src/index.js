@@ -60,6 +60,17 @@ const apiLimiter = rateLimit({
   message:  { error: 'Limite de pedidos excedido' },
 });
 
+// ─── Root (API) ───────────────────────────────────────────────
+app.get('/', (req, res) => {
+  res.json({
+    ok: true,
+    service: 'LeadControl SaaS API',
+    version: '3.0.0',
+    env: process.env.NODE_ENV || 'development',
+    time: new Date().toISOString(),
+  });
+});
+
 // ─── Static (Frontend legado em /public) ──────────────────────
 // O teu frontend actual em /public é servido directamente aqui.
 // Quando migrares para Next.js, remove estas linhas.

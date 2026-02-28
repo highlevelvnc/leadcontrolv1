@@ -1,0 +1,362 @@
+// ═══════════════════════════════════════════════════════════════
+// LeadControl SaaS — Prisma Schema
+// Multi-tenant: todas as tabelas de negócio têm tenant_id
+// Tenant = a empresa imobiliária que subscreve a plataforma
+// User   = agentes/admins dentro de um tenant
+// ═══════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── TENANTS (Empresas / Agências) ───────────────────────────
+model Tenant {
+  id         String   @id @default(cuid())
+  name       String                          // "Imobiliária Silva Lda"
+  slug       String   @unique               // "silva-imoveis" → subdominio futuro
+  plan       Plan     @default(FREE)
+  active     Boolean  @default(true)
+  logo       String?
+  phone      String?
+  email      String?
+  address    String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt          @map("updated_at")
+
+  // relations
+  users          User[]
+  properties     Property[]
+  leads          Lead[]
+  deals          Deal[]
+  pipelineStages PipelineStage[]
+  appointments   Appointment[]
+  tasks          Task[]
+  automations    Automation[]
+  automationLogs AutomationLog[]
+  integrations   Integration[]
+  activities     Activity[]
+  notifications  Notification[]
+
+  @@map("tenants")
+}
+
+enum Plan {
+  FREE
+  STARTER
+  GROWTH
+  ENTERPRISE
+}
+
+// ─── USERS (Agentes dentro de um Tenant) ─────────────────────
+model User {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  name      String
+  email     String
+  password  String
+  role      UserRole @default(AGENT)
+  phone     String?
+  avatar    String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  properties     Property[]     @relation("AgentProperties")
+  leads          Lead[]         @relation("AgentLeads")
+  deals          Deal[]         @relation("AgentDeals")
+  appointments   Appointment[]  @relation("AgentAppointments")
+  tasks          Task[]         @relation("AssignedTasks")
+  createdTasks   Task[]         @relation("CreatedTasks")
+  automations    Automation[]
+  activities     Activity[]
+  notifications  Notification[]
+
+  // email único por tenant (não global)
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  AGENT
+}
+
+// ─── PROPERTIES (Imóveis) ─────────────────────────────────────
+model Property {
+  id           String    @id @default(cuid())
+  tenantId     String    @map("tenant_id")
+  agentId      String?   @map("agent_id")
+  title        String
+  type         String                       // apartamento, moradia, cobertura…
+  purpose      String                       // venda | locacao
+  price        Decimal   @db.Decimal(12,2)
+  area         Decimal?  @db.Decimal(8,2)
+  bedrooms     Int       @default(0)
+  bathrooms    Int       @default(0)
+  parking      Int       @default(0)
+  address      String?
+  neighborhood String?
+  city         String?
+  state        String?
+  description  String?
+  status       String    @default("active") // active | reserved | sold | deleted
+  featured     Boolean   @default(false)
+  images       String[]  @default([])
+  amenities    String[]  @default([])
+  latitude     Decimal?  @db.Decimal(10,7)
+  longitude    Decimal?  @db.Decimal(10,7)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt      @map("updated_at")
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agent     User?    @relation("AgentProperties", fields: [agentId], references: [id])
+  deals     Deal[]
+  tasks     Task[]
+  appointments Appointment[]
+  activities   Activity[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, purpose])
+  @@map("properties")
+}
+
+// ─── LEADS (Clientes potenciais) ──────────────────────────────
+model Lead {
+  id                String    @id @default(cuid())
+  tenantId          String    @map("tenant_id")
+  agentId           String?   @map("agent_id")
+  propertyInterestId String?  @map("property_interest_id")
+  name              String
+  email             String?
+  phone             String?
+  source            String    @default("manual")
+  status            String    @default("new")  // new | contacted | qualified | won | lost | deleted
+  temperature       String    @default("cold") // hot | warm | cold
+  interest          String?
+  budgetMin         Decimal?  @db.Decimal(12,2) @map("budget_min")
+  budgetMax         Decimal?  @db.Decimal(12,2) @map("budget_max")
+  notes             String?
+  score             Int       @default(0)
+  lastContact       DateTime? @map("last_contact")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt      @map("updated_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agent    User?     @relation("AgentLeads", fields: [agentId], references: [id])
+  deals    Deal[]
+  tasks    Task[]
+  appointments Appointment[]
+  activities   Activity[]
+  notifications Notification[]
+
+  @@index([tenantId])
+  @@index([tenantId, temperature])
+  @@index([tenantId, status])
+  @@map("leads")
+}
+
+// ─── PIPELINE STAGES ──────────────────────────────────────────
+model PipelineStage {
+  id        String  @id @default(cuid())
+  tenantId  String  @map("tenant_id")
+  name      String
+  color     String  @default("#4a9eff")
+  position  Int     @default(0)
+  isDefault Boolean @default(false) @map("is_default")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deals  Deal[]
+
+  @@index([tenantId])
+  @@map("pipeline_stages")
+}
+
+// ─── DEALS (Negócios / Pipeline) ──────────────────────────────
+model Deal {
+  id            String    @id @default(cuid())
+  tenantId      String    @map("tenant_id")
+  agentId       String?   @map("agent_id")
+  leadId        String?   @map("lead_id")
+  propertyId    String?   @map("property_id")
+  stageId       String?   @map("stage_id")
+  title         String
+  value         Decimal?  @db.Decimal(12,2)
+  notes         String?
+  expectedClose DateTime? @map("expected_close")
+  closedAt      DateTime? @map("closed_at")
+  status        String    @default("open") // open | won | lost | deleted
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt      @map("updated_at")
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agent    User?          @relation("AgentDeals", fields: [agentId], references: [id])
+  lead     Lead?          @relation(fields: [leadId], references: [id])
+  property Property?      @relation(fields: [propertyId], references: [id])
+  stage    PipelineStage? @relation(fields: [stageId], references: [id])
+  tasks    Task[]
+  activities Activity[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("deals")
+}
+
+// ─── APPOINTMENTS (Agenda / Visitas) ─────────────────────────
+model Appointment {
+  id         String    @id @default(cuid())
+  tenantId   String    @map("tenant_id")
+  agentId    String?   @map("agent_id")
+  leadId     String?   @map("lead_id")
+  propertyId String?   @map("property_id")
+  title      String
+  type       String    @default("visit")   // visit | meeting | signing | call
+  date       DateTime
+  duration   Int       @default(60)        // minutos
+  status     String    @default("scheduled") // scheduled | done | cancelled
+  notes      String?
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agent    User?     @relation("AgentAppointments", fields: [agentId], references: [id])
+  lead     Lead?     @relation(fields: [leadId], references: [id])
+  property Property? @relation(fields: [propertyId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, date])
+  @@map("appointments")
+}
+
+// ─── TASKS ───────────────────────────────────────────────────
+model Task {
+  id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  assignedTo  String?   @map("assigned_to")
+  createdBy   String?   @map("created_by")
+  leadId      String?   @map("lead_id")
+  propertyId  String?   @map("property_id")
+  dealId      String?   @map("deal_id")
+  title       String
+  description String?
+  dueDate     DateTime? @map("due_date")
+  priority    String    @default("medium") // high | medium | low
+  status      String    @default("pending") // pending | done | cancelled
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignee User?     @relation("AssignedTasks", fields: [assignedTo], references: [id])
+  creator  User?     @relation("CreatedTasks",  fields: [createdBy],  references: [id])
+  lead     Lead?     @relation(fields: [leadId],     references: [id])
+  property Property? @relation(fields: [propertyId], references: [id])
+  deal     Deal?     @relation(fields: [dealId],     references: [id])
+
+  @@index([tenantId])
+  @@map("tasks")
+}
+
+// ─── AUTOMATIONS ─────────────────────────────────────────────
+model Automation {
+  id            String    @id @default(cuid())
+  tenantId      String    @map("tenant_id")
+  createdBy     String?   @map("created_by")
+  name          String
+  triggerType   String    @map("trigger_type")
+  triggerConfig Json      @default("{}") @map("trigger_config")
+  actionType    String    @map("action_type")
+  actionConfig  Json      @default("{}") @map("action_config")
+  active        Boolean   @default(true)
+  runCount      Int       @default(0) @map("run_count")
+  lastRun       DateTime? @map("last_run")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator User?           @relation(fields: [createdBy], references: [id])
+  logs    AutomationLog[]
+
+  @@index([tenantId])
+  @@map("automations")
+}
+
+model AutomationLog {
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  automationId String   @map("automation_id")
+  status       String                          // success | error | activated | deactivated
+  message      String
+  ranAt        DateTime @default(now()) @map("ran_at")
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([automationId])
+  @@map("automation_logs")
+}
+
+// ─── INTEGRATIONS ────────────────────────────────────────────
+model Integration {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  name      String
+  type      String                    // whatsapp | portal | ads | analytics | webhook
+  config    Json     @default("{}")
+  active    Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("integrations")
+}
+
+// ─── ACTIVITIES (Feed de actividade) ─────────────────────────
+model Activity {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  userId      String?  @map("user_id")
+  leadId      String?  @map("lead_id")
+  propertyId  String?  @map("property_id")
+  dealId      String?  @map("deal_id")
+  type        String
+  description String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User?     @relation(fields: [userId],     references: [id])
+  lead     Lead?     @relation(fields: [leadId],     references: [id])
+  property Property? @relation(fields: [propertyId], references: [id])
+  deal     Deal?     @relation(fields: [dealId],     references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt])
+  @@map("activities")
+}
+
+// ─── NOTIFICATIONS ────────────────────────────────────────────
+model Notification {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  userId    String   @map("user_id")
+  leadId    String?  @map("lead_id")
+  type      String
+  title     String
+  message   String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId],   references: [id], onDelete: Cascade)
+  lead   Lead?  @relation(fields: [leadId],   references: [id])
+
+  @@index([tenantId, userId])
+  @@map("notifications")
+}

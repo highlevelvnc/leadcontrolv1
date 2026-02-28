@@ -1,0 +1,36 @@
+{
+  "name": "leadcontrol-saas-backend",
+  "version": "3.0.0",
+  "description": "LeadControl — SaaS Backend · PostgreSQL + Prisma + Multi-tenant",
+  "main": "src/index.js",
+  "scripts": {
+    "start":      "node src/index.js",
+    "dev":        "nodemon src/index.js",
+    "db:migrate": "prisma migrate deploy",
+    "db:push":    "prisma db push",
+    "db:studio":  "prisma studio",
+    "db:seed":    "node scripts/seed.js",
+    "db:reset":   "prisma migrate reset --force && node scripts/seed.js",
+    "generate":   "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.10.0",
+    "bcryptjs":       "^2.4.3",
+    "cookie-parser":  "^1.4.7",
+    "cors":           "^2.8.5",
+    "dotenv":         "^16.4.1",
+    "express":        "^4.18.2",
+    "express-rate-limit": "^7.2.0",
+    "helmet":         "^7.1.0",
+    "jsonwebtoken":   "^9.0.2",
+    "morgan":         "^1.10.0",
+    "uuid":           "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3",
+    "prisma":  "^5.10.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

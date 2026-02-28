@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeadControl — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:#0a0c0f;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.bg{position:fixed;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(201,168,76,0.08) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(74,158,255,0.06) 0%,transparent 50%)}
+.card{background:#111418;border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:48px;width:420px;position:relative;box-shadow:0 24px 64px rgba(0,0,0,0.5)}
+.logo{display:flex;align-items:center;gap:12px;margin-bottom:36px;justify-content:center}
+.logo-icon{width:44px;height:44px;background:linear-gradient(135deg,#c9a84c,#e8c87a);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#000;box-shadow:0 0 24px rgba(201,168,76,0.3)}
+.logo-text{font-family:'Playfair Display',serif;font-size:24px;color:#e8eaf0}
+.logo-text span{color:#c9a84c}
+h2{font-family:'Playfair Display',serif;font-size:22px;color:#e8eaf0;margin-bottom:6px;text-align:center}
+p.sub{font-size:13px;color:#5a6478;text-align:center;margin-bottom:32px}
+.group{margin-bottom:18px}
+label{display:block;font-size:12px;color:#8b94a8;margin-bottom:6px;font-weight:500}
+input{width:100%;background:#1e242d;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px 16px;color:#e8eaf0;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:all 0.2s}
+input:focus{border-color:#c9a84c;box-shadow:0 0 0 3px rgba(201,168,76,0.1)}
+.btn{width:100%;background:linear-gradient(135deg,#c9a84c,#e8c87a);color:#000;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s;margin-top:8px}
+.btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(201,168,76,0.4)}
+.error{background:rgba(224,92,92,0.1);border:1px solid rgba(224,92,92,0.3);border-radius:8px;padding:10px 14px;color:#e05c5c;font-size:12px;margin-bottom:16px;display:none}
+.hint{background:rgba(74,158,255,0.08);border:1px solid rgba(74,158,255,0.15);border-radius:10px;padding:12px 14px;margin-top:20px}
+.hint p{font-size:11px;color:#8b94a8;line-height:1.7}
+.hint strong{color:#4a9eff}
+.spinner{display:none;width:16px;height:16px;border:2px solid rgba(0,0,0,0.3);border-top-color:#000;border-radius:50%;animation:spin 0.6s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">🏢</div>
+    <div class="logo-text">Lead<span>Control</span></div>
+  </div>
+  <h2>Bem-vindo de volta</h2>
+  <p class="sub">Acesse seu CRM Imobiliário</p>
+  <div class="error" id="error"></div>
+  <div class="group">
+    <label>E-mail</label>
+    <input type="email" id="email" placeholder="seu@email.com" value="admin@leadcontrol.com">
+  </div>
+  <div class="group">
+    <label>Senha</label>
+    <input type="password" id="password" placeholder="••••••••" value="admin123">
+  </div>
+  <button class="btn" onclick="login()" id="loginBtn">
+    <span id="btnText">Entrar no CRM</span>
+    <div class="spinner" id="spinner"></div>
+  </button>
+  <div class="hint">
+    <p><strong>Acesso Beta:</strong><br>
+    👤 Admin: admin@leadcontrol.com / <strong>admin123</strong><br>
+    👤 Agente: juliana@leadcontrol.com / <strong>agent123</strong></p>
+  </div>
+</div>
+<script>
+document.getElementById('password').addEventListener('keypress', e => { if(e.key === 'Enter') login(); });
+async function login() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const err = document.getElementById('error');
+  const spinner = document.getElementById('spinner');
+  const btnText = document.getElementById('btnText');
+  err.style.display = 'none';
+  spinner.style.display = 'block'; btnText.style.display = 'none';
+  try {
+    const r = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({email, password}) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Erro ao fazer login');
+    localStorage.setItem('lc_token', data.token);
+    localStorage.setItem('lc_user', JSON.stringify(data.user));
+    window.location.href = '/';
+  } catch(e) {
+    err.textContent = e.message; err.style.display = 'block';
+  } finally {
+    spinner.style.display = 'none'; btnText.style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>

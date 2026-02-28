@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeadControl — CRM Imobiliário</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast" style="display:none;">
+  <span class="toast-icon" id="toastIcon">✅</span>
+  <span id="toastMsg">Ação realizada!</span>
+</div>
+
+<!-- NOTIFICATIONS PANEL -->
+<div class="notif-panel" id="notifPanel">
+  <div class="notif-header">
+    <span class="notif-title">Notificações</span>
+    <span class="notif-mark" onclick="markAllRead()">Marcar lidas</span>
+  </div>
+  <div id="notifList"><div style="padding:20px;text-align:center;color:var(--text3);font-size:13px;">Carregando...</div></div>
+</div>
+
+<!-- MODAL: NOVO IMÓVEL -->
+<div class="modal-overlay" id="novoImovelModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Cadastrar Imóvel</span>
+      <button class="modal-close" onclick="closeModal('novoImovelModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group span2"><label class="form-label">Título *</label><input class="form-input" id="propTitle" placeholder="Ex: Apartamento 3 Quartos — Leblon"></div>
+        <div class="form-group"><label class="form-label">Tipo *</label><select class="form-input" id="propType"><option value="apartamento">Apartamento</option><option value="casa">Casa</option><option value="cobertura">Cobertura</option><option value="studio">Studio</option><option value="flat">Flat</option><option value="penthouse">Penthouse</option><option value="sala_comercial">Sala Comercial</option><option value="terreno">Terreno</option></select></div>
+        <div class="form-group"><label class="form-label">Finalidade *</label><select class="form-input" id="propPurpose"><option value="venda">Venda</option><option value="locacao">Locação</option></select></div>
+        <div class="form-group"><label class="form-label">Preço *</label><input class="form-input" id="propPrice" placeholder="Ex: 1500000" type="number"></div>
+        <div class="form-group"><label class="form-label">Área (m²)</label><input class="form-input" id="propArea" placeholder="150" type="number"></div>
+        <div class="form-group"><label class="form-label">Quartos</label><input class="form-input" id="propBedrooms" value="2" type="number" min="0"></div>
+        <div class="form-group"><label class="form-label">Banheiros</label><input class="form-input" id="propBathrooms" value="2" type="number" min="0"></div>
+        <div class="form-group"><label class="form-label">Vagas</label><input class="form-input" id="propParking" value="1" type="number" min="0"></div>
+        <div class="form-group"><label class="form-label">Bairro</label><input class="form-input" id="propNeighborhood" placeholder="Ipanema"></div>
+        <div class="form-group"><label class="form-label">Cidade</label><input class="form-input" id="propCity" placeholder="Rio de Janeiro"></div>
+        <div class="form-group"><label class="form-label">Estado</label><input class="form-input" id="propState" placeholder="RJ"></div>
+        <div class="form-group span2"><label class="form-label">URL da Foto Principal</label><input class="form-input" id="propImageUrl" placeholder="https://..."></div>
+        <div class="form-group span2"><label class="form-label">Descrição</label><textarea class="form-input" id="propDesc" rows="3" placeholder="Descreva o imóvel..."></textarea></div>
+        <div class="form-group span2"><label class="form-label"><input type="checkbox" id="propFeatured" style="margin-right:8px;">Marcar como Destaque</label></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('novoImovelModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveProperty()"><i class="fas fa-check"></i> Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DETALHE IMÓVEL -->
+<div class="modal-overlay" id="propDetailModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Detalhes do Imóvel</span>
+      <button class="modal-close" onclick="closeModal('propDetailModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" id="propDetailContent"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('propDetailModal')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: NOVO LEAD -->
+<div class="modal-overlay" id="novoLeadModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="leadModalTitle">Novo Lead</span>
+      <button class="modal-close" onclick="closeModal('novoLeadModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="novoLeadForm" onsubmit="return false;">
+        <input type="hidden" id="leadEditId">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Nome *</label><input class="form-input" id="leadName" placeholder="Nome completo"></div>
+          <div class="form-group"><label class="form-label">Telefone / WhatsApp</label><input class="form-input" id="leadPhone" placeholder="+55 (21) 9..." type="tel"></div>
+          <div class="form-group span2"><label class="form-label">E-mail</label><input class="form-input" id="leadEmail" placeholder="email@exemplo.com" type="email"></div>
+          <div class="form-group"><label class="form-label">Interesse</label><input class="form-input" id="leadInterest" placeholder="Ex: Apto 3q Ipanema"></div>
+          <div class="form-group"><label class="form-label">Budget Máx. (R$)</label><input class="form-input" id="leadBudget" placeholder="1500000" type="number"></div>
+          <div class="form-group"><label class="form-label">Origem</label><select class="form-input" id="leadSource"><option value="manual">Manual</option><option value="zap_imoveis">Zap Imóveis</option><option value="olx">OLX</option><option value="instagram">Instagram</option><option value="indicacao">Indicação</option><option value="site">Site próprio</option><option value="google_ads">Google Ads</option></select></div>
+          <div class="form-group"><label class="form-label">Temperatura</label><select class="form-input" id="leadTemp"><option value="hot">🔥 Quente</option><option value="warm">🌡️ Morno</option><option value="cold">❄️ Frio</option></select></div>
+          <div class="form-group span2"><label class="form-label">Observações</label><textarea class="form-input" id="leadNotes" rows="3" placeholder="Notas sobre o cliente..."></textarea></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('novoLeadModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveLead()"><i class="fas fa-user-plus"></i> Salvar Lead</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: NOVO NEGÓCIO -->
+<div class="modal-overlay" id="newDealModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <span class="modal-title">Novo Negócio</span>
+      <button class="modal-close" onclick="closeModal('newDealModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="newDealForm" onsubmit="return false;">
+        <input type="hidden" id="dealStageId">
+        <div class="form-grid">
+          <div class="form-group span2"><label class="form-label">Título *</label><input class="form-input" id="dealTitle" placeholder="Ex: Venda Cobertura — Carlos"></div>
+          <div class="form-group"><label class="form-label">Lead</label><select class="form-input" id="dealLeadId"></select></div>
+          <div class="form-group"><label class="form-label">Imóvel</label><select class="form-input" id="dealPropId"></select></div>
+          <div class="form-group"><label class="form-label">Valor (R$)</label><input class="form-input" id="dealValue" placeholder="1500000" type="number"></div>
+          <div class="form-group"><label class="form-label">Previsão Fechamento</label><input class="form-input" id="dealClose" type="date"></div>
+          <div class="form-group span2"><label class="form-label">Notas</label><textarea class="form-input" id="dealNotes" rows="2" placeholder="Detalhes do negócio..."></textarea></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('newDealModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveDeal()"><i class="fas fa-check"></i> Criar Negócio</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: AGENDAMENTO -->
+<div class="modal-overlay" id="agendaModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <span class="modal-title">Novo Agendamento</span>
+      <button class="modal-close" onclick="closeModal('agendaModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="agendaForm" onsubmit="return false;">
+        <div class="form-grid">
+          <div class="form-group span2"><label class="form-label">Título *</label><input class="form-input" id="apptTitle" placeholder="Ex: Visita Cobertura Ipanema"></div>
+          <div class="form-group"><label class="form-label">Tipo</label><select class="form-input" id="apptType"><option value="visit">Visita</option><option value="meeting">Reunião</option><option value="signing">Assinatura</option><option value="call">Ligação</option></select></div>
+          <div class="form-group"><label class="form-label">Duração (min)</label><input class="form-input" id="apptDuration" value="60" type="number"></div>
+          <div class="form-group span2"><label class="form-label">Data e Hora *</label><input class="form-input" id="apptDate" type="datetime-local"></div>
+          <div class="form-group span2"><label class="form-label">Notas</label><textarea class="form-input" id="apptNotes" rows="2" placeholder="Observações..."></textarea></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('agendaModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveAppointment()"><i class="fas fa-calendar-check"></i> Agendar</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP LAYOUT -->
+<div class="app">
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon"><i class="fas fa-building"></i></div>
+      <div class="logo-text">Lead<span>Control</span></div>
+    </div>
+    <div class="sidebar-section-label">Principal</div>
+    <div class="nav-item active" onclick="navigate('dashboard',this)"><i class="nav-icon fas fa-chart-pie"></i> Dashboard</div>
+    <div class="nav-item" onclick="navigate('imoveis',this)"><i class="nav-icon fas fa-home"></i> Imóveis</div>
+    <div class="nav-item" onclick="navigate('leads',this)"><i class="nav-icon fas fa-users"></i> Leads <span class="nav-badge red" id="leadsCount">—</span></div>
+    <div class="nav-item" onclick="navigate('pipeline',this)"><i class="nav-icon fas fa-columns"></i> Pipeline</div>
+    <div class="nav-item" onclick="navigate('agenda',this)"><i class="nav-icon fas fa-calendar-alt"></i> Agenda</div>
+    <div class="sidebar-section-label">Análise</div>
+    <div class="nav-item" onclick="navigate('relatorios',this)"><i class="nav-icon fas fa-chart-bar"></i> Relatórios</div>
+    <div class="nav-item" onclick="toast('Mapa disponível em breve!')"><i class="nav-icon fas fa-map-marked-alt"></i> Mapa</div>
+    <div class="nav-item" onclick="toast('Automações em breve!')"><i class="nav-icon fas fa-robot"></i> Automações <span class="nav-badge">Em breve</span></div>
+    <div class="sidebar-bottom">
+      <div class="agent-card" onclick="toast('Perfil em breve!')">
+        <div class="agent-avatar" id="agentInitials">RS</div>
+        <div class="agent-info">
+          <div class="agent-name" id="agentName">Carregando...</div>
+          <div class="agent-role" id="agentRole">CRM</div>
+        </div>
+        <div class="online-dot"></div>
+      </div>
+      <button onclick="logout()" style="width:100%;margin-top:8px;background:rgba(224,92,92,0.1);border:1px solid rgba(224,92,92,0.2);color:#e05c5c;border-radius:8px;padding:8px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s;" onmouseover="this.style.background='rgba(224,92,92,0.2)'" onmouseout="this.style.background='rgba(224,92,92,0.1)'"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div>
+        <div class="page-title" id="pageTitle">Dashboard</div>
+        <div class="page-subtitle" id="pageSubtitle">Visão geral do negócio</div>
+      </div>
+      <div class="topbar-right">
+        <div class="search-box"><i class="fas fa-search" style="color:var(--text3);font-size:13px;"></i><input type="text" placeholder="Buscar..."></div>
+        <div class="icon-btn" onclick="document.getElementById('notifPanel').classList.toggle('show');loadNotifications()"><i class="fas fa-bell"></i><span class="notif-dot" style="display:none;"></span></div>
+        <button class="btn btn-primary" id="mainCta" onclick="openModal('novoImovelModal')"><i class="fas fa-plus"></i> Novo Imóvel</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="view active" id="view-dashboard">
+        <div class="kpi-grid">
+          <div class="kpi-card gold"><div class="kpi-top"><div class="kpi-icon gold"><i class="fas fa-hand-holding-usd"></i></div><div class="kpi-trend up" id="kpi-vgv-trend">▲ 0%</div></div><div class="kpi-value" id="kpi-vgv">—</div><div class="kpi-label">VGV — Mês Atual</div></div>
+          <div class="kpi-card green"><div class="kpi-top"><div class="kpi-icon green"><i class="fas fa-user-check"></i></div><div class="kpi-trend up">● Ativo</div></div><div class="kpi-value" id="kpi-leads">—</div><div class="kpi-label">Leads Ativos</div></div>
+          <div class="kpi-card blue"><div class="kpi-top"><div class="kpi-icon blue"><i class="fas fa-home"></i></div><div class="kpi-trend up">● Online</div></div><div class="kpi-value" id="kpi-properties">—</div><div class="kpi-label">Imóveis em Carteira</div></div>
+          <div class="kpi-card purple"><div class="kpi-top"><div class="kpi-icon purple"><i class="fas fa-calendar-check"></i></div><div class="kpi-trend up">● Este mês</div></div><div class="kpi-value" id="kpi-visits">—</div><div class="kpi-label">Visitas Agendadas</div></div>
+        </div>
+        <div class="main-grid">
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><i class="icon fas fa-star"></i> Imóveis em Destaque</div><button class="btn btn-ghost" style="padding:6px 14px;font-size:12px;" onclick="navigate('imoveis',null)">Ver todos</button></div>
+            <div class="property-list" id="dash-properties"><div style="padding:20px;text-align:center;color:var(--text2)">Carregando...</div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><i class="icon fas fa-fire"></i> Leads Quentes</div><button class="btn btn-ghost" style="padding:6px 14px;font-size:12px;" onclick="navigate('leads',null)">Ver todos</button></div>
+            <div class="leads-list" id="dash-leads"><div style="padding:20px;text-align:center;color:var(--text2)">Carregando...</div></div>
+          </div>
+        </div>
+        <div class="bottom-grid">
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><i class="icon fas fa-funnel-dollar"></i> Pipeline</div><span style="font-size:12px;color:var(--gold2);font-weight:600;" id="kpi-pipeline">—</span></div>
+            <div class="pipeline" id="dash-pipeline"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><i class="icon fas fa-chart-bar"></i> Vendas por Mês</div></div>
+            <div class="chart-area"><div class="mini-chart" id="monthlyChart"></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><i class="icon fas fa-bolt"></i> Atividades</div></div>
+            <div class="activity-list" id="dash-activities"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- IMÓVEIS -->
+      <div class="view" id="view-imoveis">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
+          <div class="search-box" style="flex:1;max-width:260px;"><i class="fas fa-search" style="color:var(--text3);font-size:13px;"></i><input type="text" id="imoveisSearch" placeholder="Buscar imóveis..." oninput="filterImoveis()"></div>
+          <select class="form-input" id="imoveisType" style="width:140px;padding:9px 12px;font-size:13px;" onchange="filterImoveis()"><option value="">Todos os tipos</option><option value="apartamento">Apartamento</option><option value="casa">Casa</option><option value="cobertura">Cobertura</option><option value="studio">Studio</option><option value="penthouse">Penthouse</option></select>
+          <select class="form-input" id="imoveisPurpose" style="width:130px;padding:9px 12px;font-size:13px;" onchange="filterImoveis()"><option value="">Venda/Locação</option><option value="venda">Venda</option><option value="locacao">Locação</option></select>
+          <button class="btn btn-primary" onclick="openModal('novoImovelModal')"><i class="fas fa-plus"></i> Novo Imóvel</button>
+        </div>
+        <div class="imoveis-grid" id="imoveis-grid"></div>
+      </div>
+
+      <!-- LEADS -->
+      <div class="view" id="view-leads">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
+          <div class="search-box" style="flex:1;max-width:260px;"><i class="fas fa-search" style="color:var(--text3);font-size:13px;"></i><input type="text" id="leadsSearch" placeholder="Buscar leads..." oninput="filterLeads()"></div>
+          <select class="form-input" id="leadsTemp" style="width:150px;padding:9px 12px;font-size:13px;" onchange="filterLeads()"><option value="">Todas temperaturas</option><option value="hot">🔥 Quentes</option><option value="warm">🌡️ Mornos</option><option value="cold">❄️ Frios</option></select>
+          <div style="margin-left:auto;display:flex;gap:10px;">
+            <button class="btn btn-ghost" onclick="toast('Importação em breve!')"><i class="fas fa-file-import"></i> Importar CSV</button>
+            <button class="btn btn-primary" onclick="openLeadModal()"><i class="fas fa-user-plus"></i> Novo Lead</button>
+          </div>
+        </div>
+        <div class="panel">
+          <table class="leads-table">
+            <thead><tr><th>Cliente</th><th>Interesse</th><th>Origem</th><th>Score</th><th>Status</th><th>Último Contato</th><th>Ações</th></tr></thead>
+            <tbody id="leads-tbody"><tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text2);">Carregando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PIPELINE -->
+      <div class="view" id="view-pipeline">
+        <div style="margin-bottom:16px;display:flex;gap:12px;align-items:center;">
+          <div style="font-size:14px;color:var(--text2);">Total em pipeline: <strong style="color:var(--gold2);" id="pipeline-total">—</strong></div>
+          <div style="margin-left:auto;"><button class="btn btn-primary" onclick="openNewDeal(null)"><i class="fas fa-plus"></i> Novo Negócio</button></div>
+        </div>
+        <div style="overflow-x:auto;"><div class="kanban-cols" id="kanban-cols"><div style="padding:40px;color:var(--text2);">Carregando pipeline...</div></div></div>
+      </div>
+
+      <!-- AGENDA -->
+      <div class="view" id="view-agenda">
+        <div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:14px;color:var(--text2);">Semana atual</div>
+          <button class="btn btn-primary" onclick="openAgendaModal()"><i class="fas fa-calendar-plus"></i> Agendar</button>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title"><i class="icon fas fa-calendar-week"></i> Agenda da Semana</div></div>
+          <div style="padding:20px;" id="agenda-list"><div style="text-align:center;color:var(--text2);padding:40px;">Carregando agenda...</div></div>
+        </div>
+      </div>
+
+      <!-- RELATÓRIOS -->
+      <div class="view" id="view-relatorios">
+        <div class="reports-grid">
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><i class="icon fas fa-chart-bar"></i> Vendas por Mês (R$)</div></div>
+            <div class="chart-area"><div class="big-chart" id="bigChart"></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><i class="icon fas fa-filter"></i> Funil de Conversão</div></div>
+            <div class="chart-area"><div class="funnel" id="funnelChart"></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><i class="icon fas fa-user-tie"></i> Equipe</div></div>
+            <div class="chart-area" style="padding:12px;" id="agentRanking"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title"><i class="icon fas fa-tasks"></i> Tarefas Pendentes</div><button class="btn btn-primary" style="padding:6px 14px;font-size:12px;" onclick="toast('Tarefas em breve!')">Ver todas</button></div>
+            <div style="padding:16px;color:var(--text2);font-size:13px;"><div style="padding:20px;text-align:center;">Dashboard de tarefas em desenvolvimento</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- AI ASSISTANT -->
+<div class="ai-assistant">
+  <div class="ai-chat" id="aiChat">
+    <div class="ai-chat-header">
+      <div class="ai-icon-pulse">✨</div>
+      <div><div class="ai-chat-name">Assistente IA</div><div class="ai-chat-status">● Online</div></div>
+      <div style="margin-left:auto;cursor:pointer;color:var(--text2);" onclick="toggleAI()"><i class="fas fa-times"></i></div>
+    </div>
+    <div class="ai-messages" id="aiMessages">
+      <div class="ai-msg bot">Olá! 👋 Sou seu assistente imobiliário com IA. Posso te ajudar com análise de leads, sugestões de imóveis, propostas e muito mais!</div>
+    </div>
+    <div class="ai-input-wrap">
+      <textarea class="ai-input" id="aiInput" rows="2" placeholder="Pergunte sobre leads, imóveis..."></textarea>
+      <button class="ai-send" onclick="sendAIMessage()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+  <button class="ai-fab" onclick="toggleAI()">✨</button>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
